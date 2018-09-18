@@ -1,1 +1,3 @@
-a chart application demo use workerman. 
+基于workerman Thinkphp5 的聊天系统
+收发包括单聊，群聊，图片或其他自定义类型信息
+可独立于项目之外部署，非侵入，兼容小程序 
