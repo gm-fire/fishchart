@@ -122,7 +122,7 @@ function sendMessageByUid($fromUserId, $uid, $message, $type="text", $fromGroupI
 
 /** 发送群组消息，针对UidList循环发送
  * @param  $fromUserId:发送者id
- * @param  $uidList:群聊中所有其他用户的id列表
+ * @param  $uidList:群聊中所有其他用户的id列表字串, 如："1,2,3,4,5"
  * @param  $message:发送的信息，json格式字符串
  * @param  $type:发送的信息类型，text-文本消息（默认）,pic-图片，voice-语音,info-透传信息（不显示的系统消息，如对方删除好友）,sys-系统透传消息
  * @param  $fromGroupId:若是群聊消息，则需要传群id

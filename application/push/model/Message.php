@@ -44,22 +44,24 @@ class Message extends Model
         
         if($groupId == null){//单聊消息
             if($firstMessageId == 0){ //第一次通信，获取最大id
-                $firstMessageId = Db::name('chart')->where(function($query) use($fromUserId, $toUserId)  {
+                $firstMessageId = Db::name('chart')->where($groupId, null)
+                ->where(function($query) use($fromUserId, $toUserId)  {
                     $query->where(['from_user_id'=>$fromUserId, 'to_user_id'=> $toUserId]);
                 })->whereOr(function($query) use($fromUserId, $toUserId) {
                     $query->where(['from_user_id'=>$toUserId, 'to_user_id'=> $fromUserId]);
                 })->max('id');
                 $firstMessageId += 1;//比最后一次通信id大        
-               // echo "firstMessageId:$firstMessageId\r\n"   ;                        
+               // echo "firstMessageId:$firstMessageId\r\n"   ;  
+                       
             }
 
             $messageList =  Db::name('chart')
                             ->where(function($query) use($fromUserId, $toUserId, $firstMessageId)  {
                                 $query->where(['from_user_id'=>$fromUserId, 'to_user_id'=> $toUserId])
-                                    ->where('id','lt', $firstMessageId);
+                                    ->where('id','lt', $firstMessageId)->where('group_id', null);
                             })->whereOr(function($query) use($fromUserId, $toUserId, $firstMessageId) {
                                 $query->where(['from_user_id'=>$toUserId, 'to_user_id'=> $fromUserId])
-                                    ->where('id','lt', $firstMessageId);
+                                    ->where('id','lt', $firstMessageId)->where('group_id', null);
                             })
                         ->order('id desc')
                         ->limit($limit)
@@ -135,11 +137,12 @@ class Message extends Model
     //$uidNotIn 不在此列表内的uid
     public function getRecentConnectUserList($uid, $time=1, $uidNotIn=[]){
         $timeAfter = date('Y-m-d', strtotime('-'.$time.' month'));
-        $recentConnectUserList = Db::name('chart')->field('from_user_id')
+        $recentConnectUserList = Db::name('chart')->distinct(true)->field('from_user_id')
                             ->where('to_user_id', $uid)
                             ->where('from_user_id', 'not in', $uidNotIn)
                             ->where('send_time', 'gt', $timeAfter)
                             ->group('from_user_id')->order('send_time desc')->select();
+        echo Db::name('chart')->getLastSql();
         return $recentConnectUserList ;
     }
 

@@ -15,7 +15,7 @@ class Message extends Controller
     public function recentList(){
         $messageModel = new MessageModel();
         $uid = input('param.uid');
-        $userList = $messageModel->getRecentConnectUserList($uid); //读取用户1的最近联系人列表
+        $userList = $messageModel->getRecentConnectUserList($uid); //读取用户的最近联系人列表
         $this->assign('userList', $userList);
         return $this->fetch();
     }

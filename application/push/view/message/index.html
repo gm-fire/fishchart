@@ -36,15 +36,33 @@
                 <span>*</span>
                 {/if}
             </a></li>
+            <li><a href="{:url('/push/Message/recentList', ['uid'=>2])}">[用户名 3]
+                {if condition="unReadCount(3) gt 0"}
+                <span>*</span>
+                {/if}
+            </a></li>
+            <li><a href="{:url('/push/Message/recentList', ['uid'=>2])}">[用户名 4]
+                {if condition="unReadCount(4) gt 0"}
+                <span>*</span>
+                {/if}
+            </a></li>
+            <li><a href="{:url('/push/Message/recentList', ['uid'=>2])}">[用户名 5]
+                {if condition="unReadCount(5) gt 0"}
+                <span>*</span>
+                {/if}
+            </a></li>
         </ul>
         <hr>
         <p>
-            <a href=""{:url('/push/Message/groupChart')}">站内信</a> 
+            <a href="{:url('/push/Message/groupChart')}" target="_blank">群聊</a> 
         </p>
+        <!--
         <hr>
+
         <p>
-                <a href=""{:url('/push/Message/recentList')}">站内信</a>
+            <a href="{:url('/push/Message/recentList')}">站内信</a>
         </p>
+        -->
     </div>
 </body>
 </html>
