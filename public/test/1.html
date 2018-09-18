@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <div class="main">
+        <textarea name="content" id="content" cols="30" rows="10"></textarea>
+    </div>
+    <div>
+        <p>
+            <input type="text" id="message">
+        </p>
+        <p>
+            <button type="button" onclick="send(1,2)">发送</button>
+        </p>
+    </div>
+    <script>
+        //var fromUserId = 1;
+        //var toUserId = 2;
+
+        var ws = new WebSocket("ws://fishchart.me:2346");
+        ws.onopen = function() {
+            console.log("连接成功");
+        }
+        ws.onmessage = function(e) {
+            console.log("收到服务端的消息：" + JSON.parse(e.data));
+            for(var o in e.data){  
+                
+            }  
+        };
+
+        function send(fromUserId, toUserId){
+            var message = $("#message").val();
+            $("#content").append("<p>"+ message +"</p>");
+            $("#message").val('');
+            ws.send({'fromUserId':fromUserId, 'toUserId':toUserId, 'message':message});
+            console.log("给服务端发送了信息："+message);
+        }
+
+
+    </script>
+</body>
+</html>

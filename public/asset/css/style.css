@@ -1,0 +1,50 @@
+#messageBox{
+    display: block;
+    width:400px;
+    height: 500px;
+    overflow-y:scroll; 
+    border: 1px solid #CCCCCC;
+}
+div{
+    box-sizing: border-box;
+}
+.msgBox{
+    display: block;
+    padding:10px;
+    max-width:260px;
+    margin-top: 10px;
+    clear: both;
+}
+.leftBox{
+    background: #EDEDED;
+    float: left;
+}
+.chartImg{
+    width:90px;
+}
+.rightBox{
+    background: #32CD32;
+    float: right;
+}
+
+#main{
+    position: relative;
+    text-align: center;
+}
+
+
+#mapBox,#mapPointBox{
+    position: absolute;
+    top:0;
+    left:0;
+    display: none;
+}
+
+.mapBtn{
+    margin-top: 10px;
+    width: 100px;
+}
+
+#mapPoint{
+    margin-top: -150px;
+}

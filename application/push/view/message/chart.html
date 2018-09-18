@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>消息测试</title>
+    <link rel="stylesheet" href="/asset/css/style.css">
+</head>
+<body>
+    <div>
+        <p>
+            当前用户:
+            <select name="fromUser" id="fromUser">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+            </select>
+
+            目标用户:
+            <select name="toUser" id="toUser">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+            </select>
+
+            <button type="button" onclick="bind()">登录上线</button>
+        </p>
+        <div id="main">
+            <div id="messageBox"></div>
+            <div id="mapBox">
+                <iframe id="mapPage" width="100%" height="450" frameborder=0
+                    src="https://apis.map.qq.com/tools/locpicker?search=1&type=1&key=5JKBZ-SUBYP-NL7DS-VQ4UT-RDN4O-3MFS4&referer=myapp">
+                </iframe>
+                <input type="hidden" id="location">
+                <button id="sendLocationBtn" class="mapBtn" >确 定</button>
+                <button id="locationReturnBtn" class="mapBtn" >返 回</button>
+            </div>
+
+            <div id="mapPointBox">
+                <iframe name="mapPoint" id="mapPoint" width="100%" height="450" frameborder=0
+                    src="https://apis.map.qq.com/tools/poimarker?type=0&marker=coord:39.96554,116.26719;title:成都;addr:北京市海淀区复兴路32号院
+                        &key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&referer=myapp">
+                </iframe>
+                <button id="mapPointnBtn" class="mapBtn" onclick="javascript:$('#mapPointBox').hide(200)" >确 定</button>
+            </div>
+
+        </div>
+        <p>
+            <input type="text" id="msg">
+            <button id="send" onclick="send()" type="button">发送消息</button>
+            
+        </p>
+        <p>
+            <form id="imgform">
+                <input name="image" id="image" type="file">
+                <button id="sendImg" type="button">发送图片</button>
+            </form>
+
+            
+        </p>
+        <p>
+            <button type="button" id="locationBtn">发送位置</button>
+        </p>
+        <p>
+            <button id="moreHistory" onclick="getMoreHistory()" type="button">更多历史消息</button>
+        </p>
+        
+        
+    </div>
+    <div id="litLocation" style="display: none;">
+        <div class="rightBox mapMsg">
+            <iframe id="mapPoint" width="100%" height="100" frameborder=0
+                src="https://apis.map.qq.com/tools/poimarker?type=0&marker=coord:39.96554,116.26719;title:成都;addr:北京市海淀区复兴路32号院
+                    &key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&referer=myapp">
+            </iframe>
+        </div>
+    </div>
+    <div id="mapCanvas">
+        <canvas id="msgCanvas"></canvas>
+    </div>
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="/asset/js/html2canvas.min.js"></script>
+    <script>
+        var server = "ws://127.0.0.1:2346";
+        //var server = "wss://imdemo.weiyunyingxiao.com";
+        var msg = $('#msg').val();
+        var ws = new WebSocket(server);
+        var firstMessageId = 1;   //请求到的最早的消息
+        webSocketInit();
+        //初始化
+        function webSocketInit(){
+            ws.onopen = function(data){
+                console.log("连接成功");
+                $("#msg").empty();
+                self.setInterval("beat()", 55000);  //每55秒发送心跳
+            }
+        
+            ws.onmessage = function(e){
+             console.log("收到服务端发来的消息：" + e.data);
+                var dataJ = JSON.parse(e.data);
+                if(dataJ.code == 'msg'){    //单条消息
+                    receiveMessage(dataJ);
+                }else if(dataJ.code == 'msgList'){  //消息列表
+                    for(var i =  0 ;i < dataJ.messageList.length ; i++){
+                        receiveMessage(dataJ.messageList[i], "prepend");//倒叙追加
+                    }
+                    if(dataJ.messageList.length > 0){
+                        console.log("修改最先一条信息length："+dataJ.messageList.length);
+                        console.log("修改最先一条信息id："+dataJ.messageList[dataJ.messageList.length - 1].id);
+                        firstMessageId = dataJ.messageList[dataJ.messageList.length -1].id;    //修改最先一条信息id
+                    }else{
+                     
+                        console.log("没有更早的历史消息了");
+                    }
+                }else if(dataJ.code == 'setPage'){
+                    page = dataJ.page;  
+                }else if(dataJ.code == 'info'){
+                    console.log(dataJ.content);
+                }else{
+                    console.log('未知消息类型:'+dataJ.code);
+                }
+
+                if(dataJ.msgid){    //已读回应
+                    //console.log('向服务器发送数据读取已收到' + dataJ.msgid);
+                    ws.send(JSON.stringify({'code':'read', 'msgid':dataJ.msgid}));
+                }
+                document.getElementById('messageBox').scrollTop = document.getElementById('messageBox').scrollHeight; //处理滚动
+            };
+            
+            //错误处理，断线重连
+            ws.onclose = function(e){
+                console.log("断线重连");
+                ws = new WebSocket(server);
+                webSocketInit();//重新初始化
+                bind();
+            }
+        }
+        
+
+        //发送信息
+        function send(){
+            var fromUser = $("#fromUser").val();
+            var toUser = $("#toUser").val();
+            var msg = $("#msg").val();
+            if(msg == ''){
+                alert('不能发送空字符串');return;
+            }
+            var data = {'code':'msg', 'fromUser':fromUser, 'toUser':toUser, 'content':msg, 'type':'text'};  //文本消息
+            ws.send(JSON.stringify(data));
+            $("#messageBox").append('<p class="rightBox msgBox">[用户 '+fromUser+"]说："+ msg +"</p>");
+            document.getElementById('messageBox').scrollTop = document.getElementById('messageBox').scrollHeight; 
+            $("#msg").val('');
+        }
+        
+
+        //注册当前用户,将用户id绑定连接
+        function bind(){
+            console.log('send bind');
+            var fromUser = $("#fromUser").val();
+            var toUser = $("#toUser").val();
+            var data = {'code':'bind', 'fromUser':fromUser, 'toUser':toUser};
+            ws.send(JSON.stringify(data));
+        }
+
+        //心跳
+        function beat(){
+            ws.send(JSON.stringify({'code':'beat'}));
+        }
+
+        //读取更多历史消息
+        function getMoreHistory(){
+            var fromUser = $("#fromUser").val();
+            var toUser = $("#toUser").val();
+            ws.send(JSON.stringify({'code':'moreHistory', 'fromUser':fromUser, 'toUser':toUser ,'firstMessageId':firstMessageId}));
+        }
+
+        //发送图片
+        $("#sendImg").click(function(){
+            console.log('上传图片');
+            var fromUser = $("#fromUser").val();
+            var toUser = $("#toUser").val();
+            var formData = new FormData();
+            formData.append("upload", 1);
+            formData.append("image", $("#image").get(0).files[0]);
+             $.ajax({
+              url:'{:url("push/File/fileUpload")}',
+              type: 'POST',
+              data: formData,
+              //这两个设置项必填
+              contentType: false,
+              processData: false,
+              success:function(data){
+                  console.log(data)
+                    //$('.picDis img').attr('src', srcPath);
+                    $("#messageBox").append('<div class="msgBox rightBox">'
+                        +'[用户 '+ fromUser +']说：<img class="chartImg" src="' + data + '"></div>');
+                    document.getElementById('messageBox').scrollTop = document.getElementById('messageBox').scrollHeight; 
+                    var data = {'code':'msg', 'fromUser':fromUser, 'toUser':toUser, 'content':data, 'type':'pic'}; 
+                    ws.send(JSON.stringify(data));
+                  }
+             })
+        });
+
+        //处理单条目信息
+        function receiveMessage(message , addtype="append"){
+            var boxClass = "leftBox msgBox";
+            if(message.from_user_id == $("#fromUser").val()){
+                boxClass = "rightBox msgBox";
+            }
+            var messageType = message.type;
+            switch (messageType){
+                case 'text':    //文本消息
+                    if(addtype == "append"){
+                        $("#messageBox").append("<p class=\""+ boxClass  +"\">[用户 "+message.from_user_id+"]说："+ message.content +"</p>");                    
+                    }else{  //列表消息时倒叙，所以用prepend
+                        $("#messageBox").prepend("<p class=\""+ boxClass  +"\">[用户 "+message.from_user_id+"]说："+ message.content +"</p>");                    
+                    }
+                    break;
+                case 'pic': //图片消息
+                    if(addtype == "append"){
+                        $("#messageBox").append('<div class= "'+ boxClass  +'">[用户 '+ message.from_user_id
+                                    +']说：<img class="chartImg" src="' + message.content + '"></div>');
+                    }else{
+                        $("#messageBox").prepend('<div class= "'+ boxClass  +'">[用户 '+ message.from_user_id
+                                    +']说：<img class="chartImg" src="' + message.content + '"></div>');
+                    }
+                   
+                    break;
+                case 'map':   //地图消息
+                    $("#messageBox").append("<p class=\""+ boxClass  +"\">[用户 "+message.from_user_id+"]说："+ JSON.stringify( message.content) +"</p>");    
+                    break;
+                case 'voice':   //语音消息
+                    break;
+                case 'info':    //系统透传消息
+                    console.log('收到透传消息：'+message.content);
+                    //处理逻辑
+                    break;
+                case 'sys': //系统提示消息
+                    break;
+                default:
+                    console.log('未知类型消息');
+                    break;
+            }
+        }
+    </script>
+    <!--地图-->
+    <script>
+        var weizhi = '';
+
+        window.addEventListener('message', function(event) {
+            // 接收位置信息，用户选择确认位置点后选点组件会触发该事件，回传用户的位置信息
+            var loc = event.data;
+            if (loc && loc.module == 'locationPicker')   //防止其他应用也会向该页面post信息，需判断module是否为'locationPicker'
+            {  
+                weizhi = loc;
+                console.log('location', loc);
+            }
+        }, false);
+
+
+        $("#locationBtn").click(function(){
+            $("#mapBox").show(300);
+        });
+
+        $("#locationReturnBtn").click(function(){
+            weizhi = '';
+            $("#mapBox").hide(300);
+        });
+        
+        
+
+        $("#sendLocationBtn").click(function(){ //地图消息
+            console.log(weizhi);
+            var fromUser = $("#fromUser").val();
+            var toUser = $("#toUser").val();
+            if(weizhi == ''){
+                alert('请选择您的位置'); return;
+            }
+            $("#mapBox").hide(300);
+            var data = {'code':'msg', 'fromUser':fromUser, 'toUser':toUser, 'content':msg, 'type':'map'}; 
+            ws.send(JSON.stringify(data));
+            //var mapContainer =  window.frames["mapPoint"].document.getElementById("container");
+            var mapContainer = $("#messageBox");
+            var imgData = '';
+            html2canvas(mapContainer).then(canvas => {
+                imgData = canvas.toDataURL();
+            });
+            console.log(imgData);
+            msg = "<img src="+imgData +">";
+            $("#messageBox").append('<p class="rightBox msgBox">[用户 '+fromUser+"]说："+ msg +"</p>");
+            document.getElementById('messageBox').scrollTop = document.getElementById('messageBox').scrollHeight;
+            weizhi = '';
+        })
+
+    </script>
+</body>
+</html>

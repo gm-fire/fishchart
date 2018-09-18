@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>群组消息测试</title>
+    <link rel="stylesheet" href="/asset/css/style.css">
+
+</head>
+<body>
+    <div>
+        <p>
+            当前用户:
+            <select name="fromUser" id="fromUser">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+            </select>
+
+            群组:
+            <input type="text" id="groupId" name="groupId" value="1">
+
+            <button type="button" onclick="bind()">登录上线</button>
+        </p>
+        <p>
+            <div id="messageBox"></div>
+        </p>
+        <p>
+            <input type="text" id="msg">
+            <button id="send" onclick="send()" type="button">发送</button>
+        </p>
+    </div>
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script>
+        var msg = $('#msg').val();
+        var ws = new WebSocket("ws://127.0.0.1:2346");
+        var uidList = "1,2,3,4,5"; //逗号分隔的分组用户列表，这里应该是该群组所有用户
+        
+        webSocketInit();
+        //初始化
+        function webSocketInit(){
+            ws.onopen = function(data){
+                console.log("连接成功");
+                $("#msg").empty();
+                self.setInterval("beat()", 55000);  //每55秒发送心跳
+            }
+        
+            ws.onmessage = function(e){
+             console.log("收到服务端发来的消息：" + e.data);
+                var dataJ = JSON.parse(e.data);
+                if(dataJ.code == 'msg'){    //单条消息
+                    receiveMessage(dataJ);
+                }else if(dataJ.code == 'msgList'){  //消息列表
+                    for(var i =  0 ;i < dataJ.messageList.length ; i++){
+                        receiveMessage(dataJ.messageList[i], "prepend");//倒叙追加
+                    }
+                    if(dataJ.messageList.length > 0){
+                        console.log("修改最先一条信息length："+dataJ.messageList.length);
+                        console.log("修改最先一条信息id："+dataJ.messageList[dataJ.messageList.length - 1].id);
+                        firstMessageId = dataJ.messageList[dataJ.messageList.length -1].id;    //修改最先一条信息id
+                    }else{
+                     
+                        console.log("没有更早的历史消息了");
+                    }
+                }else if(dataJ.code == 'setPage'){
+                    page = dataJ.page;  
+                }else if(dataJ.code == 'info'){
+                    console.log(dataJ.content);
+                }else{
+                    console.log('未知消息类型:'+dataJ.code);
+                }
+
+                if(dataJ.msgid){    //已读回应
+                    //console.log('向服务器发送数据读取已收到' + dataJ.msgid);
+                    ws.send(JSON.stringify({'code':'read', 'msgid':dataJ.msgid}));
+                }
+                document.getElementById('messageBox').scrollTop = document.getElementById('messageBox').scrollHeight; //处理滚动
+            };
+            
+            //错误处理，断线重连
+            ws.onclose = function(e){
+                console.log("断线重连");
+                ws = new WebSocket(server);
+                webSocketInit();//重新初始化
+                bind();
+            }
+        
+        }
+       
+
+       //处理单条目信息
+       function receiveMessage(message , addtype="append"){
+            var boxClass = "leftBox msgBox";
+            if(message.from_user_id == $("#fromUser").val()){
+                boxClass = "rightBox msgBox";
+            }
+            var messageType = message.type;
+            switch (messageType){
+                case 'text':    //文本消息
+                    if(addtype == "append"){
+                        $("#messageBox").append("<p class=\""+ boxClass  +"\">[用户 "+message.from_user_id+"]说："+ message.content +"</p>");                    
+                    }else{  //列表消息时倒叙，所以用prepend
+                        $("#messageBox").prepend("<p class=\""+ boxClass  +"\">[用户 "+message.from_user_id+"]说："+ message.content +"</p>");                    
+                    }
+                    break;
+                case 'pic': //图片消息
+                    if(addtype == "append"){
+                        $("#messageBox").append('<div class= "'+ boxClass  +'">[用户 '+ message.from_user_id
+                                    +']说：<img class="chartImg" src="' + message.content + '"></div>');
+                    }else{
+                        $("#messageBox").prepend('<div class= "'+ boxClass  +'">[用户 '+ message.from_user_id
+                                    +']说：<img class="chartImg" src="' + message.content + '"></div>');
+                    }
+                   
+                    break;
+                case 'map':   //地图消息
+                    $("#messageBox").append("<p class=\""+ boxClass  +"\">[用户 "+message.from_user_id+"]说："+ JSON.stringify( message.content) +"</p>");    
+                    break;
+                case 'voice':   //语音消息
+                    break;
+                case 'info':    //系统透传消息
+                    console.log('收到透传消息：'+message.content);
+                    //处理逻辑
+                    break;
+                case 'sys': //系统提示消息
+                    break;
+                default:
+                    console.log('未知类型消息');
+                    break;
+            }
+        }
+
+        /*发送信息*/
+        function send(){
+            var fromUser = $("#fromUser").val();
+            var groupId = $("#groupId").val();
+            var msg = $("#msg").val();
+            ws.send('{"code":"group", "fromUser":' + fromUser + ', "uidList":"' + uidList + '", "groupId":' + groupId
+                 + ', "content":"' + msg + '", "toUser":0 , "type":"text"}');//暂时用文本测试
+            $("#messageBox").append("<p>我向群" + groupId + "发送了："+ msg +"</p>");
+            $("#msg").val('');
+        };
+        
+
+        //注册当前用户,将用户id绑定连接
+        function bind(){
+            console.log('send bind');
+            var fromUser = $("#fromUser").val();
+            var groupId = $("#groupId").val();
+            ws.send('{"code":"bind",  "toUser":'+ fromUser + ', "groupId":'+groupId +'}');
+        }
+
+        //心跳
+        function beat(){
+            ws.send('{"code":"beat"}');
+        }
+    </script>
+</body>
+</html>
