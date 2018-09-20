@@ -10,7 +10,9 @@ define('HEARTBEAT_TIME', 55); //心跳55秒
 class Worker extends Server
 {
 protected $count = 1;   // ====这里进程数必须必须必须设置为1===
-protected $uidConnections = array(); //新增加一个属性，用来保存uid到connection的映射(uid是用户id或者客户端唯一标识)
+protected $uidConnections =  array();    //新增加一个属性，用来保存uid到connection的映射(uid是用户id或者客户端唯一标识)
+//protected $peopleConnections = array(); //单聊映射
+//protected $groupConnections = array(); //群聊的映射
 
 /**构造函数
  */
@@ -38,7 +40,8 @@ public function onMessage($connection, $dataJ)
     $toUserId = isset($data['toUser']) ? $data['toUser'] : null;    //接收者
     $groupId = isset($data['groupId']) ? $data['groupId'] : null;   //群
     $uidList = isset($data['uidList']) ? $data['uidList'] : null;   //群聊用户id列表;
-
+   
+    
     // 判断当前客户端是否已经验证,即是否设置了uid
     switch($code){
         case 'bind':
@@ -47,7 +50,13 @@ public function onMessage($connection, $dataJ)
                 * 实现针对特定uid推送数据
                 */
                 $connection->uid = $fromUserId;
-                $this->uidConnections[$connection->uid] = $connection;
+                if($groupId){// 群聊和单聊使用两个连接
+                    echo '群聊链接key：'.'g'.$connection->uid."\r\n";
+                    $this->uidConnections['g'.$connection->uid] = $connection;
+                }else{
+                    echo '单聊链接key：'.$connection->uid."\r\n";
+                    $this->uidConnections[$connection->uid] = $connection;
+                }
                 $connection->send(json_encode(['code'=>'msg', 'type'=>'info', 'content' => '用户： '.$connection->uid.'连接建立']));
                 $historyMessageList = $this->getHistoryMessage($fromUserId, $toUserId, $groupId, $firstMessageId);   //发送历史消息
                 $data['code'] = 'msgList';
@@ -106,9 +115,13 @@ function broadcast($message)
 function sendMessageByUid($fromUserId, $uid, $message, $type="text", $fromGroupId = null)
 {
     $messageModel = new Message();
-    $msgid = $messageModel->saveMessage($fromUserId, $uid, $message, $type, $fromGroupId);//向数据库保存聊天记录    
-    if($uid > 0 && isset($this->uidConnections[$uid]))  //如果接收用户当前在线
+    $msgid = $messageModel->saveMessage($fromUserId, $uid, $message, $type, $fromGroupId);//向数据库保存聊天记录 
+    if($fromGroupId){
+        $uid = 'g'.$uid;
+    }   
+    if(isset($this->uidConnections[$uid]))  //如果接收用户当前在线
     {
+        echo "\r\n uid:$uid\r\n";
         $connection = $this->uidConnections[$uid];
         $data['code'] =  'msg';
         $data['msgid'] =  $msgid;
@@ -130,10 +143,11 @@ function sendMessageByUid($fromUserId, $uid, $message, $type="text", $fromGroupI
 function sendMessageByUidList($fromUserId, $uidList, $message, $type="text",  $fromGroupId = null)
 {
     $uidList = explode(',', $uidList);
+    echo "发送群组消息\r\n";
     foreach($uidList as $uid){
-        if($uid != $fromUserId){
+        //if($uid != $fromUserId){
             $this->sendMessageByUid($fromUserId, $uid, $message, $type,  $fromGroupId);
-        }
+        //}
     }
 }
 

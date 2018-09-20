@@ -66,33 +66,33 @@ class Message extends Model
                         ->order('id desc')
                         ->limit($limit)
                         ->select();
-            //echo Db::name('chart')->getLastSql();
+            echo Db::name('chart')->getLastSql();
         }else{  //群组消息
             //dump('读取群组历史消息');
 
             if($firstMessageId == 0){ //第一次通信，获取最大id
-                $firstMessageId = Db::name('chart')->where(function($query) use($groupId, $fromUserId)  {
-                    $query->where(['group_id'=>$groupId, 'to_user_id'=> $fromUserId]);
-                })->whereOr(function($query) use($groupId, $fromUserId) {
-                    $query->where(['group_id'=>$groupId, 'from_user_id'=>$fromUserId]);
+                $firstMessageId = Db::name('chart')->where(function($query) use($groupId, $toUserId)  {
+                    $query->where(['group_id'=>$groupId, 'from_user_id'=> $toUserId, 'to_user_id'=> $toUserId]);
+                })->whereOr(function($query) use($groupId, $toUserId) {
+                    $query->where(['group_id'=>$groupId, 'to_user_id'=>$toUserId]);
                 })->max('id');
                 $firstMessageId += 1;//比最后一次通信id大        
-               // echo "firstMessageId:$firstMessageId\r\n"   ;                        
+                echo "firstMessageId:$firstMessageId\r\n"   ;                        
             }
-            //echo Db::name('chart')->getLastSql();
+            echo Db::name('chart')->getLastSql();
 
             $messageList = Db::name('chart')
-                ->where(function($query) use($groupId, $fromUserId, $firstMessageId)  {
-                    $query->where(['group_id'=>$groupId, 'to_user_id'=> $fromUserId])
+                ->where(function($query) use($groupId, $toUserId, $firstMessageId)  {
+                    $query->where(['group_id'=>$groupId, 'to_user_id'=> $toUserId])
                         ->where('id','lt', $firstMessageId);
-                })->whereOr(function($query) use($groupId, $fromUserId, $firstMessageId) {
-                    $query->where(['group_id'=>$groupId, 'from_user_id'=> $fromUserId])
+                })->whereOr(function($query) use($groupId, $toUserId, $firstMessageId) {
+                    $query->where(['group_id'=>$groupId, 'from_user_id'=> $toUserId, 'to_user_id'=> $toUserId])
                         ->where('id','lt', $firstMessageId);
                 })
             ->order('id desc')
             ->limit($limit)
             ->select();
-            //echo Db::name('chart')->getLastSql();
+            echo Db::name('chart')->getLastSql();
         }
         return $messageList;
     }
@@ -137,7 +137,7 @@ class Message extends Model
     //$uidNotIn 不在此列表内的uid
     public function getRecentConnectUserList($uid, $time=1, $uidNotIn=[]){
         $timeAfter = date('Y-m-d', strtotime('-'.$time.' month'));
-        $recentConnectUserList = Db::name('chart')->distinct(true)->field('from_user_id')
+        $recentConnectUserList = Db::name('chart')->field('from_user_id')
                             ->where('to_user_id', $uid)
                             ->where('from_user_id', 'not in', $uidNotIn)
                             ->where('send_time', 'gt', $timeAfter)
