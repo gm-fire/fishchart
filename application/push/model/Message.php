@@ -29,7 +29,8 @@ class Message extends Model
                 ->where('is_receive', 0)    //读取未发送
                 ->order('id desc')
                 ->select();
-            Db::name('chart')->where('group_id', $groupId)//变更未发送的信息状态
+            
+            Db::name('chart')->where('group_id', $groupId)  //变更未发送的信息状态
                         ->where('to_user_id', $toUserId)
                         ->where('is_receive', 0)
                         ->setField('is_receive', 1);
@@ -146,15 +147,71 @@ class Message extends Model
         return $recentConnectUserList ;
     }
 
-
-    //当前联系人有多少条未读信息
+    //当前联系人总共有多少条未读信息
     public function unReadCount($uid, $time=1){
         $timeAfter = date('Y-m-d', strtotime('-'.$time.' month'));
         $unReadCount = Db::name('chart')->field('id')
                             ->where('to_user_id', $uid)
-                            ->where('send_time', 'gt', $timeAfter)
-                            ->where('is_receive', 0)//读取已发送
+                            //->where('send_time', 'gt', $timeAfter)
+                            ->where('is_receive', 0)//读取未发送
                             ->count();
         return $unReadCount ;
+    }
+
+    //当前联系人列表未读消息数
+    //$uid:当前用户
+    // $userList 好友id列表 ‘-’分隔
+    //返回[[用户id=>未读数量]]
+    public function unReadCountList($uid, $userList){
+        //$userList = explode('-',$userList);
+        $unReadCountList = [];//[[uid,count]]
+        foreach( $userList as $fuid){
+            $unReadCountList[$fuid] = Db::name('chart')->field('id')
+                ->where('to_user_id', $uid)
+                ->where('from_user_id', $fuid)
+                //->where('send_time', 'gt', $timeAfter)
+                ->where('is_receive', 0)//读取未发送
+                ->count();
+        }
+        return $unReadCountList;
+    }
+
+    //当前群组列表未读消息数
+    //$uid:当前用户
+    // $userList 好友id列表 ‘-’分隔
+    //返回[[用户id=>未读数量]]
+    public function groupUnReadCount($uid, $groupIdList=[]){
+        $unReadCountList = [];//[[uid,count]]
+        foreach( $groupIdList as $gid){
+            $unReadCountList[$gid] = Db::name('chart')->field('id')
+            ->where('to_user_id', $uid)
+            ->where('group_id', $gid)
+            //->where('send_time', 'gt', $timeAfter)
+            ->where('is_receive', 0)//读取未发送
+            ->count();
+        }
+        return $unReadCountList;
+    }
+
+    //当前联系人列表群未读消息数  废弃
+    //$uid:当前用户
+    // $userGroupList 群id列表  [[群id=>[用户id1,用户id2,.....]]]
+    //返回[[用户id=>未读数量]]
+    public function groupUnReadCountList($uid, $userGroupList){
+        $userGroupList = explode('-',input('param.userGroupList'));
+        $groupUnReadCountList = [];//[[uid,count]]
+        foreach( $userGroupList as $gid=>$uGroup){
+            $tempCount = 0;
+            $uGroup =  explode('#',input('param.userGroupList'));
+            foreach($uGroup as $fuid){
+                $tempCount  += Db::name('chart')->field('id')
+                ->where('to_user_id', $uid)
+                ->where('from_user_id', $fuid)
+                ->where('is_receive', 0)//读取未发送
+                ->count();
+            }
+            $groupUnReadCountList[$gid] = $tempCount;
+        }
+        return $groupUnReadCountList;
     }
 }

@@ -38,6 +38,7 @@ public function onMessage($connection, $dataJ)
     $toUserId = isset($data['toUser']) ? $data['toUser'] : null;    //接收者
     $groupId = isset($data['groupId']) ? $data['groupId'] : null;   //群
     $uidList = isset($data['uidList']) ? $data['uidList'] : null;   //群聊用户id列表;
+    $groupIdList = isset($data['groupIdList']) ? $data['groupIdList'] : null;   //群id列表
 
     // 判断当前客户端是否已经验证,即是否设置了uid
     switch($code){
@@ -75,6 +76,23 @@ public function onMessage($connection, $dataJ)
         case 'read':    //读取信息反馈
             $msgid = $data['msgid'];//信息id
             $this->receiveMessage($msgid);
+            break ;
+        case 'unreadcount'://读取用户未读消息
+            //$connection = $this->uidConnections[$fromUserId];
+            $messageModel = new Message();
+            if(isset($data['type'])){   //people / group
+                $type = $data['type'];
+                if($type == 'people'){
+                    $res = $messageModel->unReadCountList($fromUserId,  $uidList);
+                    return $connection->send(json_encode(['code'=>'info','type'=>'peopleUnreadCount','content' => $res]));
+                }
+                if($type == 'group'){
+                    $res = $messageModel->groupUnReadCount($fromUserId,  $groupIdList);
+                    return $connection->send(json_encode(['code'=>'info','type'=>'groupUnreadCount','content' => $res]));
+                }
+                return $connection->send(json_encode(['message' => '未读统计类型错误，仅限people / group']));
+            }
+            
             break ;
         case 'beat': //心跳,保持连接用
             break;

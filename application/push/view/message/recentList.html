@@ -23,10 +23,10 @@
         <p>最近联系人：</p>
             <ul id="recent">
                 {volist name="userList" id="user"}
-                <li><a href="{:url('/push/Message/chart', ['uid'=>$user.from_user_id])}">[用户名{$user.from_user_id}]<span>*</span></a></li>
+                <li><a href="{:url('/push/Message/chart', ['uid'=>$user.from_user_id])}">[用户名{$user.from_user_id}]
+                    <span>*</span></a></li>
                 {/volist}
             </ul>
-
     </div>
 </body>
 </html>

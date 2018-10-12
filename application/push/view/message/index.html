@@ -56,13 +56,133 @@
         <p>
             <a href="{:url('/push/Message/groupChart')}" target="_blank">群聊</a> 
         </p>
+        <p>
+            <a href="/push/Message/userUnreadCount/uid/1/userlist/2-3-4">测试用户列表未读</a>
+        </p>
+        <p>
+            <a href="/push/Message/groupUnReadCountList/uid/1/gid/1/userlist/2-3-4-5">测试群组未读</a>
+        </p>
         <!--
         <hr>
-
         <p>
             <a href="{:url('/push/Message/recentList')}">站内信</a>
         </p>
         -->
     </div>
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script>
+        var server = "ws://127.0.0.1:2346";
+        //var server = "wss://imdemo.weiyunyingxiao.com";
+        var msg = $('#msg').val();
+        var ws = new WebSocket(server);
+        var firstMessageId = 1;   //请求到的最早的消息
+        webSocketInit();
+        //初始化
+        function webSocketInit(){
+            ws.onopen = function(data){
+                console.log("连接成功");
+                $("#msg").empty();
+                self.setInterval("beat()", 55000);  //每55秒发送心跳
+                //self.setInterval("getUnread()", 1000);  //每秒获取未读
+                getUnread();
+            }
+        
+            ws.onmessage = function(e){
+             console.log("收到服务端发来的消息：" + e.data);
+                var dataJ = JSON.parse(e.data);
+                if(dataJ.code == 'msg'){    //单条消息
+                    receiveMessage(dataJ);
+                }else if(dataJ.code == 'msgList'){  //消息列表
+                    for(var i =  0 ;i < dataJ.messageList.length ; i++){
+                        receiveMessage(dataJ.messageList[i], "prepend");//倒叙追加
+                    }
+                    if(dataJ.messageList.length > 0){
+                        console.log("修改最先一条信息length："+dataJ.messageList.length);
+                        console.log("修改最先一条信息id："+dataJ.messageList[dataJ.messageList.length - 1].id);
+                        firstMessageId = dataJ.messageList[dataJ.messageList.length -1].id;    //修改最先一条信息id
+                    }else{
+                     
+                        console.log("没有更早的历史消息了");
+                    }
+                }else if(dataJ.code == 'setPage'){
+                    page = dataJ.page;  
+                }else if(dataJ.code == 'info'){
+                    if(dataJ.type == 'peopleUnreadCount') peopleUnreadCount(dataJ);
+                    if(dataJ.type == 'groupUnreadCount') groupUnreadCount(dataJ);
+                    console.log(dataJ.content);
+                }else{
+                    console.log('未知消息类型:'+dataJ.code);
+                }
+
+                if(dataJ.msgid){    //已读回应
+                    //console.log('向服务器发送数据读取已收到' + dataJ.msgid);
+                    ws.send(JSON.stringify({'code':'read', 'msgid':dataJ.msgid}));
+                }
+                //document.getElementById('messageBox').scrollTop = document.getElementById('messageBox').scrollHeight; //处理滚动
+            };
+            
+            //错误处理，断线重连
+            ws.onclose = function(e){
+                console.log("断线重连");
+                ws = new WebSocket(server);
+                webSocketInit();//重新初始化
+                bind();
+            }
+        }
+        
+
+        //发送信息
+        function send(){
+            var fromUser = $("#fromUser").val();
+            var toUser = $("#toUser").val();
+            var msg = $("#msg").val();
+            if(msg == ''){
+                alert('不能发送空字符串');return;
+            }
+            var data = {'code':'msg', 'fromUser':fromUser, 'toUser':toUser, 'content':msg, 'type':'text'};  //文本消息
+            ws.send(JSON.stringify(data));
+            $("#messageBox").append('<p class="rightBox msgBox">[用户 '+fromUser+"]说："+ msg +"</p>");
+            document.getElementById('messageBox').scrollTop = document.getElementById('messageBox').scrollHeight; 
+            $("#msg").val('');
+        }
+        
+
+        //注册当前用户,将用户id绑定连接
+        function bind(){
+            console.log('send bind');
+            var fromUser = $("#fromUser").val();
+            var toUser = $("#toUser").val();
+            var data = {'code':'bind', 'fromUser':fromUser, 'toUser':toUser};
+            ws.send(JSON.stringify(data));
+        }
+        
+        //心跳
+        function beat(){
+            ws.send(JSON.stringify({'code':'beat'}));
+        }
+
+
+        //获取未读信息
+        function getUnread(){
+            var fromUser = 1;
+            var uidList = [1,2,3,4,5];
+            var groupIdList = [1,2,3];
+            var data = {'code':'unreadcount', 'type':'people', 'fromUser':fromUser, 'uidList':uidList};  //用户未读
+            ws.send(JSON.stringify(data));
+            var data2 = {'code':'unreadcount', 'type':'group', 'fromUser':fromUser, 'groupIdList':groupIdList};  //群组未读
+            ws.send(JSON.stringify(data2));
+        }
+        
+        //修改用户未读消息
+        function peopleUnreadCount(dataJ){
+            console.log(dataJ);
+        }
+
+        //修改群组未读消息
+        function groupUnreadCount(dataJ){
+            console.log(dataJ);
+        }
+        
+    </script>
 </body>
 </html>

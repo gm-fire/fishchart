@@ -30,6 +30,23 @@ class Message extends Controller
         return $this->fetch();
     }
 
+    //获取用户列表未读消息数量
+    public function userUnreadCount(){
+        $messageModel = new MessageModel();
+        $uid = input('param.uid');
+        $userlist = explode('-', input('param.userlist'));
+        $res = $messageModel->unReadCountList($uid, $userlist);
+        echo json_encode($res);
+    }
+
+    //
+    public function groupUnReadCountList(){
+        $messageModel = new MessageModel();
+        $uid = input('param.uid');
+        $gid = input('param.gid');
+        $userlist = explode('-', input('param.userlist'));
+        echo $messageModel->groupUnReadCount($uid, $gid, $userlist);
+    }
 
     //just test
     public function test(){
