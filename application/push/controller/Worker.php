@@ -171,7 +171,7 @@ function receiveMessage($msgid){
  */
 function getUnreadMessage($fromUserId, $toUserId , $groupId = null, $time = 1){
     $messageModel = new Message();
-    return $messageModel->getUnreadMessage($toUserId, $fromUserId, $groupId, $time);
+    return $messageModel->getUnreadMessage($fromUserId, $toUserId, $groupId, $time);
 }
 
 /** 获取当前用户历史消息
