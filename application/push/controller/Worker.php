@@ -39,6 +39,7 @@ public function onMessage($connection, $dataJ)
     $groupId = isset($data['groupId']) ? $data['groupId'] : null;   //群
     $uidList = isset($data['uidList']) ? $data['uidList'] : null;   //群聊用户id列表;
     $groupIdList = isset($data['groupIdList']) ? $data['groupIdList'] : null;   //群id列表
+    $msgid = isset($data['msgid']) ? $data['msgid'] : 0;   //消息id 已读消息接口用到
 
     // 判断当前客户端是否已经验证,即是否设置了uid
     switch($code){
@@ -74,7 +75,7 @@ public function onMessage($connection, $dataJ)
             $connection->send(json_encode($data));
             break;
         case 'read':    //读取信息反馈
-            $msgid = $data['msgid'];//信息id
+            //$msgid ;//信息id
             $this->receiveMessage($msgid);
             break ;
         case 'unreadcount'://读取用户未读消息
@@ -125,7 +126,7 @@ function sendMessageByUid($fromUserId, $uid, $message, $type="text", $fromGroupI
 {
     $messageModel = new Message();
     $msgid = $messageModel->saveMessage($fromUserId, $uid, $message, $type, $fromGroupId);//向数据库保存聊天记录    
-    if($uid > 0 && isset($this->uidConnections[$uid]))  //如果接收用户当前在线
+    if($uid > 0 && isset($this->uidConnections[$uid]) && $fromUserId != $uid)  //如果接收用户当前在线
     {
         $connection = $this->uidConnections[$uid];
         $data['code'] =  'msg';
@@ -149,9 +150,9 @@ function sendMessageByUidList($fromUserId, $uidList, $message, $type="text",  $f
 {
     $uidList = explode(',', $uidList);
     foreach($uidList as $uid){
-        if($uid != $fromUserId){
+        //if($uid != $fromUserId){
             $this->sendMessageByUid($fromUserId, $uid, $message, $type,  $fromGroupId);
-        }
+        //}
     }
 }
 
@@ -171,7 +172,7 @@ function receiveMessage($msgid){
  */
 function getUnreadMessage($fromUserId, $toUserId , $groupId = null, $time = 1){
     $messageModel = new Message();
-    return $messageModel->getUnreadMessage($fromUserId, $toUserId, $groupId, $time);
+    return $messageModel->getUnreadMessage($toUserId, $fromUserId, $groupId, $time);
 }
 
 /** 获取当前用户历史消息
@@ -182,7 +183,7 @@ function getUnreadMessage($fromUserId, $toUserId , $groupId = null, $time = 1){
  */
 function getHistoryMessage($fromUserId, $toUserId , $groupId = null, $firstMessageId = 1){
     $messageModel = new Message();
-    return $messageModel->getHistoryMessage($toUserId, $fromUserId, $groupId, $firstMessageId);
+    return $messageModel->getHistoryMessage($fromUserId, $toUserId, $groupId, $firstMessageId);
 }
 
 //设置当前分页（弃用）

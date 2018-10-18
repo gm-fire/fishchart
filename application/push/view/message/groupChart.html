@@ -150,7 +150,7 @@
             console.log('send bind');
             var fromUser = $("#fromUser").val();
             var groupId = $("#groupId").val();
-            ws.send('{"code":"bind",  "fromUser":'+ fromUser + ', "toUser":0, "groupId":'+groupId +'}');
+            ws.send('{"code":"bind",  "toUser":'+ fromUser + ', "groupId":'+groupId +'}');
         }
 
         //心跳
