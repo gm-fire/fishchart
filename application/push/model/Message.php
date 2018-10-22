@@ -169,6 +169,7 @@ class Message extends Model
             $unReadCountList[$fuid] = Db::name('chart')->field('id')
                 ->where('to_user_id', $uid)
                 ->where('from_user_id', $fuid)
+				->where('group_id', null)
                 //->where('send_time', 'gt', $timeAfter)
                 ->where('is_receive', 0)//读取未发送
                 ->count();
